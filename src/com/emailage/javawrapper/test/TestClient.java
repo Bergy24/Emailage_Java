@@ -25,7 +25,7 @@ public class TestClient {
 		String user_email = null;
 		Enums.Environment environment = Enums.Environment.Production;
 
-		// Email validation
+		/* Email validation
 		try {
 			System.out.println("Querying Email");
 
@@ -37,6 +37,7 @@ public class TestClient {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		*/
 
 		// Email + IP validation
 		try {

@@ -52,13 +52,13 @@ public class EmailageClient {
 	 * ACCOUNT SID. You can find the Account SID in the Settings menu -> API Key
 	 * Info.
 	 */
-	private static final String AccountSID = "INPUT--SID";
+	private static final String AccountSID = "2FDD035584AB47C98FECCF7D6CA43DAA";
 
 	/*
 	 * AUTH TOKEN. You can find the AUTH TOKEN in the Settings menu -> API Key
 	 * Info.
 	 */
-	private static final String AuthToken = "INPUT--KEY";
+	private static final String AuthToken = "AE6574B0F6304FD19BEC17A7B2041659";
 	
 	private static Enums.FraudFlag FraudType;
 
@@ -77,7 +77,7 @@ public class EmailageClient {
 	 *            the API call.
 	 * @return Result of the API call.
 	 */
-	public static String QueryEmail(String email, Enums.Format resultFormat, Enums.SignatureMethod hashAlgorithm,
+	public static String QueryEmail(String email, ExtraInputParameter extraArgs, Enums.Format resultFormat, Enums.SignatureMethod hashAlgorithm,
 			String user_email, Enums.Environment environment) throws UnsupportedEncodingException, IOException, IllegalArgumentException {
 
 		try {
@@ -87,6 +87,12 @@ public class EmailageClient {
 		}
 		
 		String query = "query=" + java.net.URLEncoder.encode(email, "UTF-8");
+		
+		try {
+			query += extraArgs.buildExtraInputParameterRequest();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
 		return PostQuery(environment, APIUrl.Query, query, resultFormat, hashAlgorithm, user_email);
 	}
