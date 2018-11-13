@@ -61,12 +61,16 @@ public class EmailageClient {
 	private static final String AuthToken = "AE6574B0F6304FD19BEC17A7B2041659";
 	
 	private static Enums.FraudFlag FraudType;
+	
+	private static String result = new String("");
 
 	/**
 	 * This method is used to query an Email Address.
 	 * 
 	 * @param email
 	 *            Transaction Email Address
+	 * @param extraArgs
+	 *            Hash table containing a list of extra arguments.
 	 * @param resultFormat
 	 *            Format of the API response call. Valid values: JSON or XML.
 	 * @param hashAlgorithm
@@ -76,15 +80,67 @@ public class EmailageClient {
 	 *            OPTIONAL. If provided, this field will be used to impersonate
 	 *            the API call.
 	 * @return Result of the API call.
+	 * @throws IOException 
+	 * @throws UnsupportedEncodingException 
 	 */
-	public static String QueryEmail(String email, ExtraInputParameter extraArgs, Enums.Format resultFormat, Enums.SignatureMethod hashAlgorithm,
-			String user_email, Enums.Environment environment) throws UnsupportedEncodingException, IOException, IllegalArgumentException {
-
+	
+	public static String QueryValidParams(final String email, final String IP, final ExtraInputParameter extraArgs,
+			final Enums.Format resultFormat, final Enums.SignatureMethod hashAlgorithm, final String user_email, final Enums.Environment environment)	{
+		
 		try {
-			validateParams(email);
-		} catch (IllegalArgumentException e) {
-			throw e;
-		}
+	        TimeoutBlock timeoutBlock = new TimeoutBlock(10000);//set timeout in milliseconds
+	        Runnable block=new Runnable() {
+
+	            @Override
+	            public void run() {
+	            	String illegalArguement = "Both Params Valid";
+	        		try {
+	        			validateEmail(email);
+	        		} catch (IllegalArgumentException e) {
+	        		
+	        			illegalArguement = e.getMessage().toLowerCase();
+	        				
+	        		}try {
+	        			validateIp(IP);
+	        		} catch (IllegalArgumentException j) {
+	        		
+	        			illegalArguement = illegalArguement + j.getMessage().toLowerCase();
+	        				
+	        		}
+	        		
+	        		try{
+	        		
+	        			if (illegalArguement.contains("Ip Address supplied is not a valid ipv4 or ipv6 address"))	{
+	        				if (illegalArguement.contains("Email supplied is not valid"))	{
+	        					result = "Both Parameters invalid";
+	        				}else{
+	        					result = QueryEmail(email, extraArgs,	resultFormat, hashAlgorithm, user_email, environment);
+	        				}
+	        			}else{
+	        				if (illegalArguement.contains("Email supplied is not valid"))	{
+	        					result = QueryIP(IP, extraArgs, resultFormat, hashAlgorithm, user_email, environment);
+	        				}else{
+	        					result = QueryEmailAndIPPlusExtraArgs(email, IP, extraArgs, resultFormat, hashAlgorithm, user_email, environment);
+	        				}
+	        			
+	        			}
+	        		} catch (IOException m)	{
+	        			result = "Exception";
+	        		}
+	        		
+	            }
+	        };
+
+	        timeoutBlock.addBlock(block); // execute the runnable block 
+
+	    } catch (Throwable n) {
+	        result = "Request Timeout"; //catch the exception here . Which is block didn't execute within the time limit
+	    } return result;
+	
+	}
+
+	public static String QueryEmail(String email, ExtraInputParameter extraArgs, Enums.Format resultFormat, Enums.SignatureMethod hashAlgorithm,
+			String user_email, Enums.Environment environment) throws UnsupportedEncodingException, IOException {
 		
 		String query = "query=" + java.net.URLEncoder.encode(email, "UTF-8");
 		
@@ -98,12 +154,12 @@ public class EmailageClient {
 	}
 
 	/**
-	 * This method is used to query an Email Address + IP.
+	 * This method is used to query an IP and Extra Args.
 	 * 
-	 * @param email
-	 *            Transaction Email Address
 	 * @param IP
 	 *            IP of the transaction.
+	 * @param extraArgs
+	 *            Hash table containing a list of extra arguments.
 	 * @param resultFormat
 	 *            Format of the API response call. Valid values: JSON or XML.
 	 * @param hashAlgorithm
@@ -114,17 +170,17 @@ public class EmailageClient {
 	 *            the API call.
 	 * @return Result of the API call.
 	 */
-	public static String QueryEmailAndIP(String email, String IP, Enums.Format resultFormat,
+	public static String QueryIP(String IP, ExtraInputParameter extraArgs, Enums.Format resultFormat,
 			Enums.SignatureMethod hashAlgorithm, String user_email, Enums.Environment environment)
-			throws UnsupportedEncodingException, IOException, IllegalArgumentException {
+			throws UnsupportedEncodingException, IOException {
+		
+		String query = "query=" + java.net.URLEncoder.encode(IP, "UTF-8");
 		
 		try {
-			validateParams(email, IP);
-		} catch (IllegalArgumentException e) {
-			throw e;
+			query += extraArgs.buildExtraInputParameterRequest();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
-
-		String query = "query=" + java.net.URLEncoder.encode(email + "+" + IP, "UTF-8");
 
 		return PostQuery(environment, APIUrl.Query, query, resultFormat, hashAlgorithm, user_email);
 	}
@@ -151,13 +207,7 @@ public class EmailageClient {
 	 */
 	public static String QueryEmailAndIPPlusExtraArgs(String email, String IP, ExtraInputParameter extraArgs,
 			Enums.Format resultFormat, Enums.SignatureMethod hashAlgorithm, String user_email, Enums.Environment environment)
-			throws UnsupportedEncodingException, IOException, IllegalArgumentException {
-
-		try {
-			validateParams(email, IP);
-		} catch (IllegalArgumentException e) {
-			throw e;
-		}
+			throws UnsupportedEncodingException, IOException {
 
 		String query = "query=" + java.net.URLEncoder.encode(email + "+" + IP, "UTF-8");
 
@@ -342,20 +392,16 @@ public class EmailageClient {
 		return buf;
 	}
 	
-	private static boolean validateParams(String email) throws IllegalArgumentException {
+	private static boolean validateEmail(String email) throws IllegalArgumentException {
 		if (validateEmailAndIpInClient && !Validation.validateEmail(email)) {
 			throw new IllegalArgumentException("Email supplied is not valid : " + email);
 		}
 		return true;
 	}
 
-	private static boolean validateParams(String email, String ipAddress) throws IllegalArgumentException {
-		if (validateEmailAndIpInClient) {
-			if (!Validation.validateEmail(email)) {
-				throw new IllegalArgumentException("Email supplied is not valid : " + email);
-			} else if (!Validation.validateIpAddress(ipAddress)) {
-				throw new IllegalArgumentException("Ip Address supplied is not a valid ipv4 or ipv6 address : " + email);
-			}
+	private static boolean validateIp(String ipAddress) throws IllegalArgumentException {
+		if (validateEmailAndIpInClient && !Validation.validateIpAddress(ipAddress)) {
+			throw new IllegalArgumentException("Ip Address supplied is not a valid ipv4 or ipv6 address : " + ipAddress);
 		}
 		return true;
 	}
